@@ -511,3 +511,36 @@ impl CRLContract {
         String::from_str(env, unsafe { core::str::from_utf8_unchecked(&out) })
     }
 }
+
+
+#[cfg(test)]
+mod admin_storage_tests {
+    use super::*;
+    use soroban_sdk::{testutils::Address as _, Address, Env};
+
+    /// Regression test for #749: `set_admin` and `get_admin` must target the
+    /// same storage backend, otherwise a written admin can never be read back
+    /// and every admin authorization check silently fails.
+    #[test]
+    fn set_admin_round_trips_through_get_admin() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register(CRLContract, ());
+        let client = CRLContractClient::new(&env, &contract_id);
+
+        let issuer = Address::generate(&env);
+        let cert_contract = Address::generate(&env);
+        client.initialize(&issuer, &cert_contract);
+
+        // Before any admin is configured the read must come back empty.
+        let read_admin = || env.as_contract(&contract_id, || CRLContract::get_admin(&env));
+        assert_eq!(read_admin(), None);
+
+        let admin = Address::generate(&env);
+        client.set_admin(&admin);
+
+        // The exact value written by set_admin must be observable by get_admin.
+        assert_eq!(read_admin(), Some(admin));
+    }
+}
