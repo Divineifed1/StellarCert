@@ -192,8 +192,11 @@ cp .env.example .env
 npm install 4. Setup Stellar (Optional - for contract deployment)
 bash
 cd ../stellar-contracts
-rustup target add wasm32-unknown-unknown
-cargo install --locked soroban-cli
+rustup target add wasm32v1-none
+cargo install stellar-cli@25.2.0
+stellar contract build
+
+# Contract artifact: target/wasm32v1-none/release/certificate_revocation.wasm
 🏃‍♂️ Running the Application
 Development Mode
 Option A: Using Docker Compose (Recommended)
