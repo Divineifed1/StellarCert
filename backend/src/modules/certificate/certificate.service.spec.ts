@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { CertificateService } from './certificate.service';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -535,6 +535,116 @@ describe('CertificateService', () => {
     });
   });
 
+  describe('editing non-active certificates (#1240)', () => {
+    const OWNER = 'issuer-owner';
+
+    const buildCertificate = (status: CertificateStatus) =>
+      ({
+        id: 'cert-1240',
+        issuerId: OWNER,
+        title: 'Original title',
+        status,
+        metadata: {},
+      }) as unknown as Certificate;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      certificateRepository.save.mockImplementation((cert: any) =>
+        Promise.resolve(cert),
+      );
+    });
+
+    it('rejects updateWithUser on a revoked certificate with 409', async () => {
+      const revoked = buildCertificate(CertificateStatus.REVOKED);
+      jest.spyOn(service, 'findOne').mockResolvedValue(revoked);
+
+      await expect(
+        service.updateWithUser(
+          'cert-1240',
+          { title: 'changed after revoke' } as any,
+          OWNER,
+          UserRole.ISSUER,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(certificateRepository.save).not.toHaveBeenCalled();
+      expect(revoked.title).toBe('Original title');
+    });
+
+    it('rejects updateWithUser on a revoked certificate even for an admin', async () => {
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(buildCertificate(CertificateStatus.REVOKED));
+
+      await expect(
+        service.updateWithUser(
+          'cert-1240',
+          { title: 'x' } as any,
+          'admin-user',
+          UserRole.ADMIN,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(certificateRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects updateWithUser on a frozen certificate with 409', async () => {
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(buildCertificate(CertificateStatus.FROZEN));
+
+      await expect(
+        service.updateWithUser(
+          'cert-1240',
+          { title: 'x' } as any,
+          OWNER,
+          UserRole.ISSUER,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(certificateRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('still allows updateWithUser on an active certificate', async () => {
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(buildCertificate(CertificateStatus.ACTIVE));
+
+      const saved = await service.updateWithUser(
+        'cert-1240',
+        { title: 'New title' } as any,
+        OWNER,
+        UserRole.ISSUER,
+      );
+
+      expect(certificateRepository.save).toHaveBeenCalledTimes(1);
+      expect(saved.title).toBe('New title');
+    });
+
+    it('rejects update on a revoked certificate with 409', async () => {
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(buildCertificate(CertificateStatus.REVOKED));
+
+      await expect(
+        service.update('cert-1240', { title: 'x' } as any),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(certificateRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('includes the current status in the 409 message', async () => {
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(buildCertificate(CertificateStatus.REVOKED));
+
+      await expect(
+        service.updateWithUser(
+          'cert-1240',
+          { title: 'x' } as any,
+          OWNER,
+          UserRole.ISSUER,
+        ),
+      ).rejects.toThrow(/Current status: revoked/i);
+    });
+  });
+  
   describe('findForRecipient', () => {
     it('also matches the email address once it is verified', async () => {
       userRepository.findOne.mockResolvedValueOnce({
