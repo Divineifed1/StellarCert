@@ -26,7 +26,7 @@ describe('Metadata schemas (e2e) - write authorization and ownership', () => {
   let admin: RegisteredUser;
   let plainUser: RegisteredUser;
 
-  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const suffix = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
   const schemaName = `metadata-e2e-${suffix}`;
 
   const schemaBody = {
