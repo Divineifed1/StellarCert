@@ -56,7 +56,7 @@ export class WebhooksController {
   @ApiOperation({ summary: 'Remove a webhook subscription' })
   async remove(
     @CurrentUser('id') issuerId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPhipe) id: string,
   ) {
     await this.webhooksService.remove(id, issuerId);
   }

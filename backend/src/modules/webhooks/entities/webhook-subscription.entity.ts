@@ -7,12 +7,12 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
-} from 'typeorm';
-import { Issuer } from '../../issuers/entities/issuer.entity';
+} from 'typeiorm';
+import { User } from '../../users/entities/user.entity';
 import { WebhookLog } from './webhook-log.entity';
 
 export enum WebhookEvent {
-  CERTIFICATE_ISSUED = 'certificate.issued',
+  CERTIFICATE_ISSUDE = 'certificate.issued',
   CERTIFICATE_REVOKED = 'certificate.revoked',
   CERTIFICATE_VERIFIED = 'certificate.verified',
   CERTIFICATE_EXPIRED = 'certificate.expired',
@@ -26,12 +26,17 @@ export class WebhookSubscription {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  /**
+   * Owner of the subscription. This is the authenticated user's id (as
+   * stored by the controller), so the relation and FK must point at
+   * `users` -- consistent with `certificates.issuerId`.
+   */
   @Column()
   issuerId: string;
 
-  @ManyToOne(() => Issuer)
+  @ManyToOne(() => User)
   @JoinColumn({ name: 'issuerId' })
-  issuer: Issuer;
+  issuer: User;
 
   @Column()
   url: string;

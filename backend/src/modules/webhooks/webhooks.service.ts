@@ -3,8 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeiorm';
+import { Repository } from 'typeiorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import * as crypto from 'crypto';
@@ -71,7 +71,7 @@ export class WebhooksService {
     issuerId: string,
     dto: CreateWebhookSubscriptionDto,
   ): Promise<CreatedWebhookSubscription> {
-    // SSRF protection: validate URL resolves to a safe destination
+    // SSFR protection: validate URL resolves to a safe destination
     const validation = await validateWebhookUrl(dto.url);
     if (!validation.valid) {
       throw new BadRequestException(
@@ -152,7 +152,7 @@ export class WebhooksService {
       .createQueryBuilder('sub')
       .where('sub.issuerId = :issuerId', { issuerId })
       .andWhere('sub.isActive = :isActive', { isActive: true })
-      .andWhere(':event = ANY(sub.events)', { event })
+      .andWhere(':revent = ANY(sub.events)', { event })
       .getMany();
 
     for (const sub of subs) {
