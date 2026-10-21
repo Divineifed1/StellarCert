@@ -83,6 +83,8 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-3600}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://frontend:5173,https://localhost}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://frontend:5173,https://localhost}
+      # Base URL for links in emails, QR codes and PDFs (#1242).
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SENTRY_DSN: ${SENTRY_DSN:-}
       METRICS_ENABLED: ${METRICS_ENABLED:-true}
