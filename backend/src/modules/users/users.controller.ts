@@ -54,6 +54,7 @@ import {
   PaginatedUsersResponseDto,
   MessageResponseDto,
 } from './dto/user-response.dto';
+import { toAdminUserResponse } from './mappers/user.mapper';
 import {
   IssuerProfileStatsDto,
   IssuerActivityResponseDto,
@@ -329,7 +330,8 @@ export class UsersController {
   @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async findByEmail(@Param('email') email: string) {
-    return this.usersService.findOneByEmail(email);
+    const user = await this.usersService.findOneByEmail(email);
+    return user ? toAdminUserResponse(user) : null;
   }
 
   @Get('profile/stats')

@@ -20,6 +20,7 @@ import {
   ResetPasswordDto,
 } from './dto/change-password.dto';
 import { UserFilterDto } from './dto/pagination.dto';
+import { UserResponseDto } from './dto/user-response.dto';
 import {
   AdminUpdateUserDto,
   UpdateUserRoleDto,
@@ -200,11 +201,11 @@ export class UsersService {
 
   async findAllUsers(
     filterDto: UserFilterDto,
-  ): Promise<IPaginatedResult<User>> {
+  ): Promise<IPaginatedResult<UserResponseDto>> {
     return await this.userAdminService.findAllUsers(filterDto);
   }
 
-  async findUserById(id: string): Promise<User> {
+  async findUserById(id: string): Promise<UserResponseDto> {
     return await this.userAdminService.findUserById(id);
   }
 
@@ -212,7 +213,7 @@ export class UsersService {
     adminId: string,
     userId: string,
     updateDto: AdminUpdateUserDto,
-  ): Promise<User> {
+  ): Promise<UserResponseDto> {
     return await this.userAdminService.adminUpdateUser(
       adminId,
       userId,
@@ -224,7 +225,7 @@ export class UsersService {
     adminId: string,
     userId: string,
     updateRoleDto: UpdateUserRoleDto,
-  ): Promise<User> {
+  ): Promise<UserResponseDto> {
     return await this.userAdminService.updateUserRole(
       adminId,
       userId,
@@ -236,7 +237,7 @@ export class UsersService {
     adminId: string,
     userId: string,
     updateStatusDto: UpdateUserStatusDto,
-  ): Promise<User> {
+  ): Promise<UserResponseDto> {
     return await this.userAdminService.updateUserStatus(
       adminId,
       userId,
@@ -248,7 +249,7 @@ export class UsersService {
     adminId: string,
     userId: string,
     deactivateDto: DeactivateUserDto,
-  ): Promise<User> {
+  ): Promise<UserResponseDto> {
     return await this.userAdminService.deactivateUser(
       adminId,
       userId,
@@ -256,7 +257,10 @@ export class UsersService {
     );
   }
 
-  async reactivateUser(adminId: string, userId: string): Promise<User> {
+  async reactivateUser(
+    adminId: string,
+    userId: string,
+  ): Promise<UserResponseDto> {
     return await this.userAdminService.reactivateUser(adminId, userId);
   }
 

@@ -66,7 +66,7 @@ export class User {
   @Column({ default: false })
   isEmailVerified: boolean;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   emailVerificationToken: string;
 
   @Column({ type: 'timestamptz', nullable: true })
@@ -74,10 +74,10 @@ export class User {
 
   // Explicit type: a `string | null` union is emitted as Object, which TypeORM
   // rejects at startup ("Data type Object is not supported").
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true, select: false })
   passwordResetToken: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true, select: false })
   @Index()
   passwordResetTokenHash: string | null;
 
@@ -99,7 +99,7 @@ export class User {
   @Column({ type: 'timestamptz', nullable: true })
   lockedUntil: Date | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true, select: false })
   refreshToken: string | null;
 
   /** Bumped to invalidate all outstanding access tokens (#1184). */
