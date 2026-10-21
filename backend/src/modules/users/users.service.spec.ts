@@ -604,7 +604,7 @@ describe('UsersService', () => {
         userAdminService.updateUserRole.mockResolvedValue({
           ...mockUser,
           role: UserRole.ISSUER,
-        } as any);
+        });
 
         const result = await service.updateUserRole(adminId, mockUser.id, {
           role: UserRole.ISSUER,
@@ -632,7 +632,7 @@ describe('UsersService', () => {
           ...mockUser,
           isActive: false,
           status: UserStatus.INACTIVE,
-        } as any);
+        });
 
         const result = await service.deactivateUser(adminId, mockUser.id, {
           reason: 'Test reason',

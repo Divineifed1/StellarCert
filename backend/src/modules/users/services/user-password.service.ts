@@ -15,9 +15,7 @@ import {
 import { EmailQueueService } from '../../email/email-queue.service';
 import { LoggingService } from '../../../common/logging/logging.service';
 import * as crypto from 'crypto';
-import {
-  buildAppLink as buildTokenLink,
-} from '../../../config/public-url.config';
+import { buildAppLink as buildTokenLink } from '../../../config/public-url.config';
 
 @Injectable()
 export class UserPasswordService {

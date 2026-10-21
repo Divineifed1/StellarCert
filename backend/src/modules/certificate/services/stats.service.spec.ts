@@ -100,9 +100,7 @@ describe('CertificateStatsService', () => {
 
       expect(trendQB.select).toHaveBeenCalledWith(utcDayBucket, 'date');
       expect(trendQB.groupBy).toHaveBeenCalledWith(utcDayBucket);
-      expect(result.issuanceTrend).toEqual([
-        { date: '2026-10-20', count: 1 },
-      ]);
+      expect(result.issuanceTrend).toEqual([{ date: '2026-10-20', count: 1 }]);
     });
 
     it('joins the real User entity and selects/groups by its actual firstName/lastName columns', async () => {

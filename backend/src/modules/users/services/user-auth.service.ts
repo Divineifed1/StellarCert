@@ -19,9 +19,7 @@ import { EmailQueueService } from '../../email/email-queue.service';
 import { LoggingService } from '../../../common/logging/logging.service';
 import { AuditService } from '../../audit/services/audit.service';
 import { tokenLifetimeSeconds } from '../../auth/utils/token-lifetime';
-import {
-  buildAppLink as buildTokenLink,
-} from '../../../config/public-url.config';
+import { buildAppLink as buildTokenLink } from '../../../config/public-url.config';
 
 @Injectable()
 export class UserAuthService {

@@ -648,7 +648,7 @@ describe('CertificateService', () => {
 
       const saved = await service.updateWithUser(
         'cert-1240',
-        { title: 'New title' } as any,
+        { title: 'New title' },
         OWNER,
         UserRole.ISSUER,
       );
@@ -683,7 +683,7 @@ describe('CertificateService', () => {
       ).rejects.toThrow(/Current status: revoked/i);
     });
   });
-  
+
   describe('findForRecipient', () => {
     it('also matches the email address once it is verified', async () => {
       userRepository.findOne.mockResolvedValueOnce({
