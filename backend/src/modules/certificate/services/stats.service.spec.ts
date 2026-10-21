@@ -83,6 +83,28 @@ describe('CertificateStatsService', () => {
       mockVerificationRepo.count.mockResolvedValue(0);
     });
 
+    it('returns UTC issuance day buckets as date strings', async () => {
+      const trendQB = buildTrendQueryBuilder();
+      trendQB.getRawMany.mockResolvedValue([
+        { date: '2026-10-20', count: '1' },
+      ]);
+      const topIssuersQB = buildTopIssuersQueryBuilder([]);
+
+      mockCertificateRepo.createQueryBuilder
+        .mockReturnValueOnce(trendQB)
+        .mockReturnValueOnce(topIssuersQB);
+
+      const result = await service.getStatistics({});
+      const utcDayBucket =
+        "TO_CHAR(DATE_TRUNC('day', cert.issuedAt AT TIME ZONE 'UTC'), 'YYYY-MM-DD')";
+
+      expect(trendQB.select).toHaveBeenCalledWith(utcDayBucket, 'date');
+      expect(trendQB.groupBy).toHaveBeenCalledWith(utcDayBucket);
+      expect(result.issuanceTrend).toEqual([
+        { date: '2026-10-20', count: 1 },
+      ]);
+    });
+
     it('joins the real User entity and selects/groups by its actual firstName/lastName columns', async () => {
       const trendQB = buildTrendQueryBuilder();
       const topIssuersQB = buildTopIssuersQueryBuilder([
