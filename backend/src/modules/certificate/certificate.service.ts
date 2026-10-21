@@ -1135,7 +1135,13 @@ export class CertificateService {
 
   async getCertificateQrCode(id: string): Promise<any> {
     const certificate = await this.findOne(id);
-    const verificationUrl = buildVerificationUrl(certificate.verificationCode);
+    const verificationCode = certificate.verificationCode;
+    if (!verificationCode) {
+      throw new BadRequestException(
+        'Certificate has no verification code to build a QR code for',
+      );
+    }
+    const verificationUrl = buildVerificationUrl(verificationCode);
     const qrCode = await QRCode.toDataURL(verificationUrl);
     return {
       id: certificate.id,
