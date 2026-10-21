@@ -867,7 +867,7 @@ export class CertificateService {
 
     const rows = certificates.map((cert) => [
       cert.id,
-      cert.verificationCode || cert.id,
+      cert.certificateId,
       cert.recipientName,
       cert.recipientEmail,
       cert.title,
