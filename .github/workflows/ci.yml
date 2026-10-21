@@ -207,7 +207,11 @@ jobs:
       - name: Install backend dependencies
         run: npm ci
       - name: Run backend e2e tests
-        run: npm run test:e2e -- --ci --runInBand
+        # The suite passes, but Jest never exits afterwards: the Nest app
+        # leaves its Redis and scheduler handles open, so the step sat "in
+        # progress" until the 6-hour job timeout. Results (and the non-zero
+        # exit on failure) are unchanged; this only ends the process.
+        run: npm run test:e2e -- --ci --runInBand --forceExit
 
   # Nothing built the images or parsed nginx.conf, so a broken Dockerfile or
   # nginx directive could reach a release. Build every documented target.

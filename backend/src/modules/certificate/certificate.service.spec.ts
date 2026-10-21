@@ -125,7 +125,7 @@ describe('CertificateService', () => {
       expect(result).toEqual({
         id: 'cert-123',
         verificationCode: 'AB12CD34',
-        verificationUrl: 'https://stellarcert.app/verify/AB12CD34',
+        verificationUrl: 'https://stellarcert.app/verify?serial=AB12CD34',
         qrCode: expect.any(String),
       });
       expect(result.qrCode).toContain('data:image/png;base64,');
@@ -134,6 +134,45 @@ describe('CertificateService', () => {
         delete process.env.FRONTEND_URL;
       } else {
         process.env.FRONTEND_URL = originalFrontendUrl;
+      }
+    }
+  });
+
+  it('falls back to the deprecated APP_URL and strips a trailing slash', async () => {
+    const certificate = {
+      id: 'cert-123',
+      verificationCode: 'AB12CD34',
+    } as Certificate;
+
+    jest.spyOn(service, 'findOne').mockResolvedValue(certificate);
+    const originalFrontendUrl = process.env.FRONTEND_URL;
+    const originalAppUrl = process.env.APP_URL;
+    const originalAllowedOrigins = process.env.ALLOWED_ORIGINS;
+    delete process.env.FRONTEND_URL;
+    delete process.env.ALLOWED_ORIGINS;
+    process.env.APP_URL = 'https://legacy.stellarcert.app/';
+
+    try {
+      const result = await service.getCertificateQrCode('cert-123');
+
+      expect(result.verificationUrl).toBe(
+        'https://legacy.stellarcert.app/verify?serial=AB12CD34',
+      );
+    } finally {
+      if (originalFrontendUrl === undefined) {
+        delete process.env.FRONTEND_URL;
+      } else {
+        process.env.FRONTEND_URL = originalFrontendUrl;
+      }
+      if (originalAppUrl === undefined) {
+        delete process.env.APP_URL;
+      } else {
+        process.env.APP_URL = originalAppUrl;
+      }
+      if (originalAllowedOrigins === undefined) {
+        delete process.env.ALLOWED_ORIGINS;
+      } else {
+        process.env.ALLOWED_ORIGINS = originalAllowedOrigins;
       }
     }
   });

@@ -19,6 +19,9 @@ import { EmailQueueService } from '../../email/email-queue.service';
 import { LoggingService } from '../../../common/logging/logging.service';
 import { AuditService } from '../../audit/services/audit.service';
 import { tokenLifetimeSeconds } from '../../auth/utils/token-lifetime';
+import {
+  buildAppLink as buildTokenLink,
+} from '../../../config/public-url.config';
 
 @Injectable()
 export class UserAuthService {
@@ -232,15 +235,7 @@ export class UserAuthService {
   }
 
   private buildAppLink(path: string, token: string): string {
-    const appUrl =
-      this.configService.get<string>('APP_URL') ||
-      this.configService.get<string>('ALLOWED_ORIGINS')?.split(',')[0] ||
-      'http://localhost:5173';
-
-    const normalizedBaseUrl = appUrl.replace(/\/+$/, '');
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-
-    return `${normalizedBaseUrl}${normalizedPath}?token=${encodeURIComponent(token)}`;
+    return buildTokenLink(path, token);
   }
 
   private getUserDisplayName(user: User): string {

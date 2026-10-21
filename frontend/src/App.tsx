@@ -65,6 +65,15 @@ function App() {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/verify" element={<VerifyCertificate />} />
+                  {/*
+                    Legacy path form. QR codes and PDFs printed before
+                    #1242 used `/verify/<code>`; keep those links working
+                    rather than sending them to the 404 route.
+                  */}
+                  <Route
+                    path="/verify/:code"
+                    element={<VerifyCertificate />}
+                  />
                   <Route path="/verify-email" element={<VerifyEmail />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
 

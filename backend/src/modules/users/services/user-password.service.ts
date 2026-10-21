@@ -15,6 +15,9 @@ import {
 import { EmailQueueService } from '../../email/email-queue.service';
 import { LoggingService } from '../../../common/logging/logging.service';
 import * as crypto from 'crypto';
+import {
+  buildAppLink as buildTokenLink,
+} from '../../../config/public-url.config';
 
 @Injectable()
 export class UserPasswordService {
@@ -175,15 +178,7 @@ export class UserPasswordService {
   }
 
   private buildAppLink(path: string, token: string): string {
-    const appUrl =
-      process.env.APP_URL ||
-      process.env.ALLOWED_ORIGINS?.split(',')[0] ||
-      'http://localhost:5173';
-
-    const normalizedBaseUrl = appUrl.replace(/\/+$/, '');
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-
-    return `${normalizedBaseUrl}${normalizedPath}?token=${encodeURIComponent(token)}`;
+    return buildTokenLink(path, token);
   }
 
   private getUserDisplayName(user: User): string {

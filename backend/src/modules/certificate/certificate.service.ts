@@ -33,6 +33,7 @@ import { MAX_EXPORT_LIMIT, MAX_PAGE_LIMIT } from './dto/export-filters.dto';
 import { ConfigService } from '@nestjs/config';
 import { CryptoUtils } from '../../common/utils/crypto.utils';
 import { toCsv } from '../../common/utils/csv.utils';
+import { buildVerificationUrl } from '../../config/public-url.config';
 
 @Injectable()
 export class CertificateService {
@@ -1135,7 +1136,13 @@ export class CertificateService {
 
   async getCertificateQrCode(id: string): Promise<any> {
     const certificate = await this.findOne(id);
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${certificate.verificationCode}`;
+    const verificationCode = certificate.verificationCode;
+    if (!verificationCode) {
+      throw new BadRequestException(
+        'Certificate has no verification code to build a QR code for',
+      );
+    }
+    const verificationUrl = buildVerificationUrl(verificationCode);
     const qrCode = await QRCode.toDataURL(verificationUrl);
     return {
       id: certificate.id,

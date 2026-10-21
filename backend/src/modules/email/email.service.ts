@@ -10,6 +10,7 @@ import { SendPasswordResetDto } from './dto/send-password-reset.dto';
 import { SendRevocationNoticeDto } from './dto/send-revocation-notice.dto';
 import { SendEmailDto } from './dto/send-email.dto';
 import { LoggingService } from '../../common/logging/logging.service';
+import { getAppBaseUrl } from '../../config/public-url.config';
 
 interface EmailConfig {
   service?: string;
@@ -316,7 +317,6 @@ export class EmailService {
   }
 
   private getBaseUrl(): string {
-    // This should be configurable in production
-    return process.env.APP_URL || 'https://stellarcert.com';
+    return getAppBaseUrl();
   }
 }
