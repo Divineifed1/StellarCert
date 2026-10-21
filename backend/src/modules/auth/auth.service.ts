@@ -245,8 +245,11 @@ export class AuthService {
       const payload =
         await this.jwtManagementService.verifyRefreshToken(refreshToken);
 
-      // Check if user still exists and is active
-      const user = await this.usersService.findOneById(payload.sub);
+      // Check if user still exists and is active. `refreshToken` is
+      // select:false on the entity, so load it explicitly for this check.
+      const user = await this.userRepository.findByIdWithRefreshToken(
+        payload.sub,
+      );
       if (!user || !user.isActive) {
         throw new UnauthorizedException('User not found or inactive');
       }

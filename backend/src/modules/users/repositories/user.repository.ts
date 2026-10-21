@@ -57,9 +57,11 @@ export class UserRepository {
   }
 
   async findByEmailVerificationToken(token: string): Promise<User | null> {
-    return this.repository.findOne({
-      where: { emailVerificationToken: token },
-    });
+    return this.repository
+      .createQueryBuilder('user')
+      .addSelect('user.emailVerificationToken')
+      .where('user.emailVerificationToken = :token', { token })
+      .getOne();
   }
 
   async findUsersWithPasswordResetTokens(): Promise<User[]> {
@@ -71,9 +73,21 @@ export class UserRepository {
   async findByPasswordResetTokenHash(
     passwordResetTokenHash: string,
   ): Promise<User | null> {
-    return this.repository.findOne({
-      where: { passwordResetTokenHash },
-    });
+    return this.repository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordResetToken')
+      .where('user.passwordResetTokenHash = :passwordResetTokenHash', {
+        passwordResetTokenHash,
+      })
+      .getOne();
+  }
+
+  async findByIdWithRefreshToken(id: string): Promise<User | null> {
+    return this.repository
+      .createQueryBuilder('user')
+      .addSelect('user.refreshToken')
+      .where('user.id = :id', { id })
+      .getOne();
   }
 
   async findByRefreshToken(refreshToken: string): Promise<User | null> {
