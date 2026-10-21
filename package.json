@@ -38,7 +38,7 @@
     "ci:check": "npm run lint && npm run typecheck && npm run test",
     "ci:build": "npm run build && npm run build:contracts",
     "security:audit": "npm audit --audit-level=high && cd backend && npm audit --audit-level=high && cd ../frontend && npm audit --audit-level=high",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
