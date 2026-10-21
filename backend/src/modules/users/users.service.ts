@@ -37,6 +37,7 @@ import { AuditService } from '../audit/services/audit.service';
 import { EmailQueueService } from '../email/email-queue.service';
 import { LoggingService } from '../../common/logging/logging.service';
 import { UserAuthService } from './services/user-auth.service';
+import { buildAppLink as buildTokenLink } from '../../config/public-url.config';
 import { UserProfileService } from './services/user-profile.service';
 import { UserPasswordService } from './services/user-password.service';
 import { UserAdminService } from './services/user-admin.service';
@@ -405,15 +406,7 @@ export class UsersService {
   }
 
   private buildAppLink(path: string, token: string): string {
-    const appUrl =
-      this.configService.get<string>('APP_URL') ||
-      this.configService.get<string>('ALLOWED_ORIGINS')?.split(',')[0] ||
-      'http://localhost:5173';
-
-    const normalizedBaseUrl = appUrl.replace(/\/+$/, '');
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-
-    return `${normalizedBaseUrl}${normalizedPath}?token=${encodeURIComponent(token)}`;
+    return buildTokenLink(path, token);
   }
 
   private getUserDisplayName(user: User): string {

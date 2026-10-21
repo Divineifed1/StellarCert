@@ -85,7 +85,7 @@ describe('CertificatePdfService', () => {
 
       expectValidPdf(buffer);
       expect(qrCodeService.generateQrCode).toHaveBeenCalledWith(
-        'http://localhost:5173/verify/AB12CD34',
+        'http://localhost:5173/verify?serial=AB12CD34',
       );
       // The QR PNG arrives as an image XObject; its dictionary is not
       // compressed, so the marker is visible in the raw bytes.
@@ -100,7 +100,7 @@ describe('CertificatePdfService', () => {
       try {
         await service.generate(makeCertificate());
         expect(qrCodeService.generateQrCode).toHaveBeenCalledWith(
-          'https://stellarcert.app/verify/AB12CD34',
+          'https://stellarcert.app/verify?serial=AB12CD34',
         );
       } finally {
         if (original === undefined) delete process.env.FRONTEND_URL;
@@ -168,7 +168,7 @@ describe('CertificatePdfService', () => {
 
       expectValidPdf(buffer);
       expect(qrCodeService.generateQrCode).toHaveBeenCalledWith(
-        'http://localhost:5173/verify/AB12CD34',
+        'http://localhost:5173/verify?serial=AB12CD34',
       );
     });
 

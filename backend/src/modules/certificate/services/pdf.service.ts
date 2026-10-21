@@ -8,6 +8,7 @@ import {
 } from '../entities/certificate-template.entity';
 import { QrCodeService } from '../../files/services/qrcode.service';
 import { LoggingService } from '../../../common/logging/logging.service';
+import { buildVerificationUrl } from '../../../config/public-url.config';
 
 const DEFAULT_PRIMARY_COLOR = '#1a365d';
 const DEFAULT_ACCENT_COLOR = '#b08d2e';
@@ -32,7 +33,7 @@ export class CertificatePdfService {
     template?: CertificateTemplate | null,
   ): Promise<Buffer> {
     const verificationUrl = certificate.verificationCode
-      ? `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${certificate.verificationCode}`
+      ? buildVerificationUrl(certificate.verificationCode)
       : undefined;
 
     let qrCodeBuffer: Buffer | undefined;
