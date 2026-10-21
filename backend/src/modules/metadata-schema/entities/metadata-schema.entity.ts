@@ -64,6 +64,15 @@ export class MetadataSchema {
   @Index()
   issuerId: string | null;
 
+  /**
+   * User who created this schema. Only the owner (or an admin) may update,
+   * upgrade or deactivate it. Null for rows created before ownership was
+   * tracked; those are admin-managed.
+   */
+  @Column({ type: 'varchar', nullable: true })
+  @Index()
+  ownerId: string | null;
+
   @Column({ default: true })
   isActive: boolean;
 

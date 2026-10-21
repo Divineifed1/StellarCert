@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,6 +20,7 @@ import {
   MetadataValidationResultDto,
 } from '../dto/metadata-schema.dto';
 import { LoggingService } from '../../../common/logging/logging.service';
+import { UserRole } from '../../../common/constants/roles';
 
 const MAX_PATTERN_LENGTH = 200;
 
@@ -55,7 +57,10 @@ export class MetadataSchemaService {
     private readonly logger: LoggingService,
   ) {}
 
-  async create(dto: CreateMetadataSchemaDto): Promise<MetadataSchema> {
+  async create(
+    dto: CreateMetadataSchemaDto,
+    ownerId: string,
+  ): Promise<MetadataSchema> {
     dto.fields?.forEach(
       (f) => f.pattern && assertSafePattern(f.name, f.pattern),
     );
@@ -77,6 +82,7 @@ export class MetadataSchemaService {
 
     const schema = this.schemaRepository.create({
       ...dto,
+      ownerId,
       requiredFields,
       allowCustomFields: dto.allowCustomFields ?? true,
       previousVersionId: previous?.id,
@@ -119,8 +125,11 @@ export class MetadataSchemaService {
   async update(
     id: string,
     dto: UpdateMetadataSchemaDto,
+    actorId: string,
+    actorRole?: string,
   ): Promise<MetadataSchema> {
     const schema = await this.findOne(id);
+    this.assertCanModify(schema, actorId, actorRole);
 
     // (name, version) is the uniqueness key that create/upgradeSchema rely on, so it is immutable.
     if (
@@ -152,6 +161,8 @@ export class MetadataSchemaService {
   async upgradeSchema(
     name: string,
     dto: CreateMetadataSchemaDto,
+    actorId: string,
+    actorRole?: string,
   ): Promise<MetadataSchema> {
     const current = await this.findLatestByName(name);
     if (!current) {
@@ -159,6 +170,7 @@ export class MetadataSchemaService {
         `No existing schema found with name "${name}"`,
       );
     }
+    this.assertCanModify(current, actorId, actorRole);
 
     const [curMajor, curMinor, curPatch] = current.version
       .split('.')
@@ -176,13 +188,38 @@ export class MetadataSchemaService {
       );
     }
 
-    return this.create({ ...dto, name });
+    // The new version belongs to the schema's owner, even when an admin
+    // performs the upgrade on their behalf. Unowned legacy rows stay unowned
+    // unless the actor creating the version is the only candidate.
+    return this.create({ ...dto, name }, current.ownerId ?? actorId);
   }
 
-  async deactivate(id: string): Promise<MetadataSchema> {
+  async deactivate(
+    id: string,
+    actorId: string,
+    actorRole?: string,
+  ): Promise<MetadataSchema> {
     const schema = await this.findOne(id);
+    this.assertCanModify(schema, actorId, actorRole);
     schema.isActive = false;
     return this.schemaRepository.save(schema);
+  }
+
+  /**
+   * Admins may manage every schema; everyone else may only modify the schema
+   * they created. Rows without an owner predate ownership tracking and are
+   * therefore admin-only.
+   */
+  private assertCanModify(
+    schema: MetadataSchema,
+    actorId: string,
+    actorRole?: string,
+  ): void {
+    if (actorRole === UserRole.ADMIN) return;
+    if (schema.ownerId && schema.ownerId === actorId) return;
+    throw new ForbiddenException(
+      'Only the schema owner or an admin can modify this schema',
+    );
   }
 
   async getVersionHistory(name: string): Promise<MetadataSchema[]> {
