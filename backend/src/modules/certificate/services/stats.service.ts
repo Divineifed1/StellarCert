@@ -97,10 +97,12 @@ export class CertificateStatsService {
     const startDate =
       dateFilter.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const endDate = dateFilter.endDate || new Date();
+    const utcDayBucket =
+      "TO_CHAR(DATE_TRUNC('day', cert.issuedAt AT TIME ZONE 'UTC'), 'YYYY-MM-DD')";
 
     const trendQuery = this.certificateRepo
       .createQueryBuilder('cert')
-      .select('DATE(cert.issuedAt)', 'date')
+      .select(utcDayBucket, 'date')
       .addSelect('COUNT(*)', 'count')
       .where('cert.issuedAt >= :startDate', { startDate })
       .andWhere('cert.issuedAt <= :endDate', { endDate });
@@ -112,7 +114,7 @@ export class CertificateStatsService {
     }
 
     const trendData = await trendQuery
-      .groupBy('DATE(cert.issuedAt)')
+      .groupBy(utcDayBucket)
       .orderBy('date', 'ASC')
       .getRawMany();
 
