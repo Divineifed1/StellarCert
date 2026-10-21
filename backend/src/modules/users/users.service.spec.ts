@@ -13,7 +13,7 @@ import { UsersService } from './users.service';
 import { UserRepository } from './repositories/user.repository';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
-import { LoginUserDto } from './dto/login-user.dto';
+
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { EmailQueueService } from '../email/email-queue.service';
@@ -112,6 +112,7 @@ describe('UsersService', () => {
     findUsersWithPasswordResetTokens: jest.fn(),
     findByRefreshToken: jest.fn(),
     update: jest.fn(),
+    setPasswordAndInvalidateSessions: jest.fn(),
     delete: jest.fn(),
     softDelete: jest.fn(),
     findAll: jest.fn(),
@@ -295,95 +296,6 @@ describe('UsersService', () => {
     });
   });
 
-  describe('login', () => {
-    const loginDto: LoginUserDto = {
-      email: 'test@example.com',
-      password: 'SecureP@ss123',
-    };
-
-    it('should successfully login a user via UserAuthService', async () => {
-      userAuthService.login.mockResolvedValue(authResult);
-
-      const result = await service.login(loginDto);
-
-      expect(result).toHaveProperty('user');
-      expect(result).toHaveProperty('tokens');
-      expect(userAuthService.login).toHaveBeenCalledWith(loginDto);
-    });
-
-    it('should throw UnauthorizedException for invalid email', async () => {
-      userAuthService.login.mockRejectedValue(
-        new UnauthorizedException('Invalid credentials'),
-      );
-
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-    });
-
-    it('should throw UnauthorizedException for invalid password', async () => {
-      userAuthService.login.mockRejectedValue(
-        new UnauthorizedException('Invalid credentials'),
-      );
-
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-    });
-
-    it('should throw ForbiddenException for locked account', async () => {
-      userAuthService.login.mockRejectedValue(
-        new ForbiddenException('Account is locked'),
-      );
-
-      await expect(service.login(loginDto)).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should throw ForbiddenException for deactivated account', async () => {
-      userAuthService.login.mockRejectedValue(
-        new ForbiddenException('Account is deactivated'),
-      );
-
-      await expect(service.login(loginDto)).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  describe('logout', () => {
-    it('should successfully logout a user via UserAuthService', async () => {
-      userAuthService.logout.mockResolvedValue(undefined);
-
-      await service.logout(mockUser.id);
-
-      expect(userAuthService.logout).toHaveBeenCalledWith(mockUser.id);
-    });
-  });
-
-  describe('refreshTokens', () => {
-    it('should successfully refresh tokens via UserAuthService', async () => {
-      userAuthService.refreshTokens.mockResolvedValue(mockTokens);
-
-      const result = await service.refreshTokens({
-        refreshToken: 'valid-refresh-token',
-      });
-
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('refreshToken');
-      expect(userAuthService.refreshTokens).toHaveBeenCalledWith({
-        refreshToken: 'valid-refresh-token',
-      });
-    });
-
-    it('should throw UnauthorizedException for invalid refresh token', async () => {
-      userAuthService.refreshTokens.mockRejectedValue(
-        new UnauthorizedException('Invalid refresh token'),
-      );
-
-      await expect(
-        service.refreshTokens({ refreshToken: 'invalid-token' }),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-  });
-
   describe('verifyEmail', () => {
     it('should successfully verify email via UserAuthService', async () => {
       userAuthService.verifyEmail.mockResolvedValue({
@@ -548,12 +460,13 @@ describe('UsersService', () => {
       expect(
         mockUserRepository.findByPasswordResetTokenHash,
       ).toHaveBeenCalled();
-      expect(mockUserRepository.update).toHaveBeenCalledWith(mockUser.id, {
-        password: 'hashedPassword123',
-        passwordResetToken: null,
-        passwordResetTokenHash: null,
-        passwordResetExpires: null,
-      });
+      // #1108 — the reset must go through the session-invalidating write
+      // (revokes refresh tokens, bumps tokenVersion, clears lockout), not a
+      // plain password update.
+      expect(
+        mockUserRepository.setPasswordAndInvalidateSessions,
+      ).toHaveBeenCalledWith(mockUser.id, 'hashedPassword123');
+      expect(mockUserRepository.update).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException for invalid token', async () => {
@@ -566,6 +479,9 @@ describe('UsersService', () => {
           confirmPassword: 'NewP@ss456',
         }),
       ).rejects.toThrow('Invalid reset token');
+      expect(
+        mockUserRepository.setPasswordAndInvalidateSessions,
+      ).not.toHaveBeenCalled();
       expect(mockUserRepository.update).not.toHaveBeenCalled();
     });
 
@@ -587,6 +503,9 @@ describe('UsersService', () => {
         }),
       ).rejects.toThrow('Reset token has expired');
       expect(userWithExpiredToken.isPasswordResetTokenValid).toHaveBeenCalled();
+      expect(
+        mockUserRepository.setPasswordAndInvalidateSessions,
+      ).not.toHaveBeenCalled();
       expect(mockUserRepository.update).not.toHaveBeenCalled();
     });
   });

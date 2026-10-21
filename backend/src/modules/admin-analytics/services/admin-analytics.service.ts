@@ -22,7 +22,16 @@ import { CertificateStatsService } from '../../certificate/services/stats.servic
 
 @Injectable()
 export class AdminAnalyticsService {
-  private readonly CACHE_TTL = 120; // 2 minutes in seconds
+  /**
+   * Analytics cache lifetime, in MILLISECONDS.
+   *
+   * The installed cache-manager is v7 (`cache-manager@^7.2.9` via
+   * `@nestjs/cache-manager@^3.1.3`). Since cache-manager v5 the `ttl` argument
+   * of `set()` is expressed in milliseconds, so this constant must stay in
+   * milliseconds - multiplying a seconds value by 1000 at the call site is how
+   * the unit silently drifted before. Two minutes = 120_000 ms.
+   */
+  private readonly CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes in milliseconds
 
   constructor(
     @InjectRepository(User)
@@ -88,7 +97,7 @@ export class AdminAnalyticsService {
     };
 
     // Cache the result
-    await this.cacheManager.set(cacheKey, result, this.CACHE_TTL * 1000);
+    await this.cacheManager.set(cacheKey, result, this.CACHE_TTL_MS);
 
     return result;
   }
@@ -97,17 +106,31 @@ export class AdminAnalyticsService {
    * Get user count breakdown by role
    */
   private async getUsersByRole(): Promise<UsersByRoleDto> {
-    const [users, issuers, admins] = await Promise.all([
-      this.userRepo.count({ where: { role: UserRole.USER } }),
-      this.userRepo.count({ where: { role: UserRole.ISSUER } }),
-      this.userRepo.count({ where: { role: UserRole.ADMIN } }),
-    ]);
+    const rows: Array<{ role: string; count: string }> = await this.userRepo
+      .createQueryBuilder('user')
+      .select('user.role', 'role')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('user.role')
+      .getRawMany();
+
+    // Every role appears in the result, with zero when nobody holds it.
+    const byRole = Object.fromEntries(
+      Object.values(UserRole).map((role) => [role, 0]),
+    ) as Record<UserRole, number>;
+    for (const row of rows) {
+      if (row.role in byRole) byRole[row.role as UserRole] = Number(row.count);
+    }
+
+    const total = Object.values(byRole).reduce((sum, count) => sum + count, 0);
 
     return {
-      users,
-      issuers,
-      admins,
-      total: users + issuers + admins,
+      users: byRole[UserRole.USER],
+      issuers: byRole[UserRole.ISSUER],
+      admins: byRole[UserRole.ADMIN],
+      auditors: byRole[UserRole.AUDITOR],
+      recipients: byRole[UserRole.RECIPIENT],
+      verifiers: byRole[UserRole.VERIFIER],
+      total,
     };
   }
 

@@ -186,6 +186,9 @@ export interface UsersByRoleStats {
   users: number;
   issuers: number;
   admins: number;
+  auditors?: number;
+  recipients?: number;
+  verifiers?: number;
   total: number;
 }
 
@@ -239,7 +242,7 @@ export interface AdminAnalytics {
 export interface AuditLogItem {
   id: string;
   action: string;
-  description: string;
+  description?: string;
   userId?: string;
   resourceId?: string;
   resourceType?: string;
@@ -255,6 +258,7 @@ export interface AuditLogItem {
 export interface AuditLogSearchResponse {
   data: AuditLogItem[];
   total: number;
+  nextCursor?: string | null;
 }
 
 export interface AuditStatistics {
@@ -267,11 +271,51 @@ export interface AuditStatistics {
 /**
  * Standard API error response
  */
-export interface ApiError {
+export interface ApiErrorResponse {
   message: string;
   statusCode: number;
   error?: string;
   details?: unknown;
+}
+
+export type ApiErrorData = ApiErrorResponse;
+
+/**
+ * API Error class that extends Error for proper instanceof checks
+ */
+export class ApiError extends Error {
+  public readonly statusCode: number;
+  public readonly error?: string;
+  public readonly details?: unknown;
+
+  constructor(message: string, statusCode: number, error?: string, details?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.error = error;
+    this.details = details;
+
+    // Maintains proper stack trace in V8 environments
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ApiError);
+    }
+  }
+}
+
+/**
+ * Helper to extract error message from unknown error
+ */
+export function getErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    return err.message;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as { message: unknown }).message);
+  }
+  return 'An unexpected error occurred';
 }
 
 /**
@@ -370,4 +414,22 @@ export interface PaginatedActivityLog {
     limit: number;
     totalPages: number;
   };
+}
+
+export type NotificationType = "info" | "success" | "error";
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface NotificationPreferences {
+  inAppEnabled: boolean;
+  infoEnabled: boolean;
+  successEnabled: boolean;
+  errorEnabled: boolean;
 }

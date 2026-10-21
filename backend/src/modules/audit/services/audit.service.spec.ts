@@ -279,6 +279,7 @@ describe('AuditService', () => {
       const mockQueryBuilder = {
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
         getManyAndCount: jest.fn().mockResolvedValue([[mockAuditLog], 1]),
@@ -314,7 +315,7 @@ describe('AuditService', () => {
 
       const result = await service.exportToCsv({});
 
-      expect(result).toContain('ID,Action,Resource Type');
+      expect(result).toContain('"ID","Action","Resource Type"');
       expect(result).toContain(mockAuditLog.id);
       expect(result).toContain(AuditAction.USER_LOGIN);
     });
@@ -333,7 +334,7 @@ describe('AuditService', () => {
 
       const result = await service.exportToCsv({});
 
-      expect(result).toContain('ID,Action,Resource Type');
+      expect(result).toContain('"ID","Action","Resource Type"');
       expect(result.split('\n').length).toBeGreaterThan(5000);
     });
   });

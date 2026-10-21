@@ -59,18 +59,21 @@ export class CertificateTransfer {
   @Column({ nullable: true })
   rejectionReason?: string;
 
-  @Column({ nullable: true, unique: true })
+  // Secret confirmation code. Never selected by default so it cannot accidentally
+  // be serialized in any API response. Codes that need it (e.g. approval) must
+  // explicitly addSelect('confirmationCode').
+  @Column({ nullable: true, unique: true, select: false })
   confirmationCode?: string;
 
   @Column({ nullable: true })
   initiatedBy: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   initiatedAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   completedAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   expiresAt?: Date;
 }

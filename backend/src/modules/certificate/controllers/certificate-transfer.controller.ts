@@ -96,8 +96,11 @@ export class CertificateTransferController {
   @Get('certificate/:certificateId/history')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get transfer history for a certificate' })
-  async getTransferHistory(@Param('certificateId') certificateId: string) {
-    return this.transferService.getTransferHistory(certificateId);
+  async getTransferHistory(
+    @Param('certificateId') certificateId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.transferService.getTransferHistory(certificateId, user);
   }
 
   @Get('pending')

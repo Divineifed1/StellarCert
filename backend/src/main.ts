@@ -8,14 +8,36 @@ import { LoggingService } from './common/logging/logging.service';
 import { MonitoringInterceptor } from './common/monitoring/monitoring.interceptor';
 import { MetricsService } from './common/monitoring/metrics.service';
 import { SecurityHeadersInterceptor } from './modules/security/interceptor';
-import { VersioningType } from '@nestjs/common';
+import { Logger, VersioningType } from '@nestjs/common';
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import { migrationStrategyWarnings } from './config/typeorm.config';
+
+/**
+ * Express `trust proxy` setting from TRUST_PROXY. `true` would trust every
+ * X-Forwarded-For hop and let any client spoof `req.ip` (#1120), so the
+ * default is off. Use a hop count (e.g. `1`) or a proxy address / CIDR list.
+ */
+function parseTrustProxy(value?: string): boolean | number | string {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed === 'false' || trimmed === '0') {
+    return false;
+  }
+  const hops = Number(trimmed);
+  return Number.isInteger(hops) && hops > 0 ? hops : trimmed;
+}
 
 async function bootstrap() {
+  // Report configuration that contradicts the documented migration strategy
+  // before anything else starts (e.g. TYPEORM_SYNCHRONIZE=true, which is no
+  // longer honoured — see #956 and MIGRATION_STRATEGY.md).
+  for (const warning of migrationStrategyWarnings()) {
+    Logger.warn(warning, 'Bootstrap');
+  }
+
   const app = await NestFactory.create(AppModule);
   const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.set('trust proxy', true);
+  expressApp.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 
   const sentryService = app.get(SentryService);
   const loggingService = app.get(LoggingService);
@@ -84,23 +106,30 @@ async function bootstrap() {
     new MonitoringInterceptor(metricsService, sentryService, loggingService),
   );
 
-  // Swagger setup
-  const config = new DocumentBuilder()
-    .setTitle('StellarCert API')
-    .setDescription('Certificate Management System API Documentation')
-    .setVersion('1.0')
-    .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      'access-token',
-    )
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-      docExpansion: 'none',
-    },
-  });
+  // Swagger setup: off in production unless SWAGGER_ENABLED=true
+  const swaggerFlag = process.env.SWAGGER_ENABLED;
+  const swaggerEnabled =
+    swaggerFlag !== undefined && swaggerFlag !== ''
+      ? swaggerFlag.toLowerCase() === 'true'
+      : process.env.NODE_ENV !== 'production';
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle('StellarCert API')
+      .setDescription('Certificate Management System API Documentation')
+      .setVersion('1.0')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'access-token',
+      )
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+        docExpansion: 'none',
+      },
+    });
+  }
 
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();

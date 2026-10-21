@@ -19,7 +19,6 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
 } from './dto/change-password.dto';
-import { LoginUserDto, RefreshTokenDto } from './dto/login-user.dto';
 import { UserFilterDto } from './dto/pagination.dto';
 import {
   AdminUpdateUserDto,
@@ -45,9 +44,6 @@ import { UserAdminService } from './services/user-admin.service';
 @Injectable()
 export class UsersService {
   private readonly SALT_ROUNDS = 12;
-  private readonly MAX_LOGIN_ATTEMPTS = 5;
-  private readonly LOCK_TIME_MINUTES = 30;
-  private readonly EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
   private readonly PASSWORD_RESET_EXPIRY_HOURS = 1;
 
   constructor(
@@ -64,32 +60,15 @@ export class UsersService {
     private readonly userAdminService: UserAdminService,
   ) {}
 
-  // ==================== Authentication Delegation ====================
-
-  async findByEmailWithPassword(email: string): Promise<User | null> {
-    return await this.userAuthService.findByEmailWithPassword(email);
-  }
+  // Authentication delegation removed (#1195): /users login/logout/refresh
+  // duplicated /auth/* through UserAuthService with different token lifetimes
+  // and no 2FA handling. All authentication flows live in AuthService.
 
   async register(
     createUserDto: CreateUserDto,
   ): Promise<{ user: IUserPublic; tokens: IAuthTokens }> {
     return await this.userAuthService.register(createUserDto);
   }
-
-  async login(
-    loginDto: LoginUserDto,
-  ): Promise<{ user: IUserPublic; tokens: IAuthTokens }> {
-    return await this.userAuthService.login(loginDto);
-  }
-
-  async logout(userId: string): Promise<void> {
-    await this.userAuthService.logout(userId);
-  }
-
-  async refreshTokens(refreshTokenDto: RefreshTokenDto): Promise<IAuthTokens> {
-    return await this.userAuthService.refreshTokens(refreshTokenDto);
-  }
-
   // ==================== Email Verification Delegation ====================
 
   async verifyEmail(
@@ -184,12 +163,13 @@ export class UsersService {
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
 
-    await this.userRepository.update(user.id, {
-      password: hashedPassword,
-      passwordResetToken: null as any,
-      passwordResetTokenHash: null as any,
-      passwordResetExpires: null as any,
-    });
+    // #1108 — clearing the reset token fields is not enough: revoke refresh
+    // tokens, bump tokenVersion (invalidates outstanding access tokens) and
+    // reset lockout counters in the same UPDATE.
+    await this.userRepository.setPasswordAndInvalidateSessions(
+      user.id,
+      hashedPassword,
+    );
 
     this.logger.log(`Password reset completed for: ${user.email}`);
 
@@ -392,43 +372,7 @@ export class UsersService {
     await this.userRepository.delete(id);
   }
 
-  // ==================== Private Methods (kept as they're used by delegated services) ====================
-
-  private async generateTokens(user: User): Promise<IAuthTokens> {
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get('JWT_EXPIRES_IN', '1h'),
-    });
-
-    const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: '7d',
-    });
-
-    // Store refresh token
-    const refreshTokenExpires = new Date();
-    refreshTokenExpires.setDate(refreshTokenExpires.getDate() + 7);
-
-    const hashedRefreshToken = await bcrypt.hash(
-      refreshToken,
-      this.SALT_ROUNDS,
-    );
-
-    await this.userRepository.update(user.id, {
-      refreshToken: hashedRefreshToken,
-      refreshTokenExpires,
-    });
-
-    return {
-      accessToken,
-      refreshToken,
-      expiresIn: 3600, // 1 hour in seconds
-    };
-  }
+  // ==================== Private Helper Methods ====================
 
   private generateToken(): string {
     return crypto.randomBytes(32).toString('hex');
@@ -436,24 +380,6 @@ export class UsersService {
 
   private hashPasswordResetLookupToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
-  }
-
-  private async queueVerificationEmail(
-    user: User,
-    emailVerificationToken: string,
-  ): Promise<void> {
-    try {
-      await this.emailQueueService.queueVerificationEmail({
-        to: user.email,
-        userName: this.getUserDisplayName(user),
-        verificationLink: this.buildVerificationLink(emailVerificationToken),
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(
-        `Failed to queue verification email for ${user.email}: ${message}`,
-      );
-    }
   }
 
   private async queuePasswordResetEmail(
@@ -472,10 +398,6 @@ export class UsersService {
         `Failed to queue password reset email for ${user.email}: ${message}`,
       );
     }
-  }
-
-  private buildVerificationLink(token: string): string {
-    return this.buildAppLink('/verify-email', token);
   }
 
   private buildPasswordResetLink(token: string): string {
@@ -498,20 +420,5 @@ export class UsersService {
     return (
       `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email
     );
-  }
-
-  private toPublicUser(user: User): IUserPublic {
-    return {
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      profilePicture: user.profilePicture,
-      role: user.role,
-      stellarPublicKey: user.stellarPublicKey,
-      isEmailVerified: user.isEmailVerified,
-      createdAt: user.createdAt,
-    };
   }
 }

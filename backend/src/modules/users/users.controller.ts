@@ -32,8 +32,6 @@ import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User, UserRole } from './entities/user.entity';
-import { CreateUserDto } from './dto/create-user.dto';
-import { LoginUserDto, RefreshTokenDto } from './dto/login-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import {
   ChangePasswordDto,
@@ -53,7 +51,6 @@ import {
 } from './dto/email-verification.dto';
 import {
   UserResponseDto,
-  AuthResponseDto,
   PaginatedUsersResponseDto,
   MessageResponseDto,
 } from './dto/user-response.dto';
@@ -66,6 +63,7 @@ import { ProfilePictureUploadResponseDto } from './dto/upload-profile-picture.dt
 import { StorageService } from '../files/services/storage.service';
 import { maxFileSize, allowedImageMimeTypes } from 'src/common/constants';
 import { Public } from 'src/common/decorators/public.decorator';
+import { profilePictureKey, storageKeyFor } from './profile-picture.util';
 
 @ApiTags('Users')
 @Controller('users')
@@ -75,62 +73,12 @@ export class UsersController {
     private readonly storageService: StorageService,
   ) {}
 
-  // ==================== Authentication Endpoints ====================
-
-  @Post('register')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user' })
-  @ApiResponse({
-    status: 201,
-    description: 'User registered successfully',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({ status: 400, description: 'Validation error' })
-  @ApiResponse({ status: 409, description: 'Email already registered' })
-  async register(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.register(createUserDto);
-  }
-
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login user' })
-  @ApiResponse({
-    status: 200,
-    description: 'Login successful',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  @ApiResponse({ status: 403, description: 'Account locked or deactivated' })
-  async login(@Body() loginDto: LoginUserDto) {
-    return this.usersService.login(loginDto);
-  }
-
-  @Post('logout')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout user' })
-  @ApiResponse({ status: 200, description: 'Logout successful' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async logout(@CurrentUser('id') userId: string) {
-    await this.usersService.logout(userId);
-    return { message: 'Logged out successfully' };
-  }
-
-  @Public()
-  @Post('refresh-token')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh access token' })
-  @ApiResponse({
-    status: 200,
-    description: 'Tokens refreshed successfully',
-  })
-  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
-  async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.usersService.refreshTokens(refreshTokenDto);
-  }
-
   // ==================== Email Verification Endpoints ====================
+  // /users/register, /users/login, /users/logout and /users/refresh-token
+  // were removed (issue #1195): they duplicated /auth/* through a second
+  // service (UserAuthService) with different token lifetimes and no 2FA
+  // handling. Authentication now lives exclusively under /auth/*, backed by
+  // AuthService.
 
   @Public()
   @Post('verify-email')
@@ -219,7 +167,7 @@ export class UsersController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@CurrentUser('id') userId: string) {
-    return this.usersService.getProfile(userId);
+    return this.withPictureUrl(await this.usersService.getProfile(userId));
   }
 
   @Put('profile')
@@ -240,7 +188,9 @@ export class UsersController {
     @CurrentUser('id') userId: string,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    return this.usersService.updateProfile(userId, updateProfileDto);
+    return this.withPictureUrl(
+      await this.usersService.updateProfile(userId, updateProfileDto),
+    );
   }
 
   @Post('profile/picture')
@@ -276,8 +226,8 @@ export class UsersController {
       );
     }
 
-    const extension = file.originalname.split('.').pop();
-    const key = `profile-pictures/${userId}-${Date.now()}.${extension}`;
+    // The extension is derived from the validated MIME type, not the client's file name.
+    const key = profilePictureKey(userId, file.mimetype);
 
     const { url } = await this.storageService.uploadFile(
       file.buffer,
@@ -286,14 +236,35 @@ export class UsersController {
       key,
     );
 
+    // Persist the object key. The signed URL in the response expires; the key does not.
     await this.usersService.updateProfile(userId, {
-      profilePicture: url,
+      profilePicture: key,
     });
 
     return {
       profilePicture: url,
       message: 'Profile picture uploaded successfully',
     };
+  }
+
+  /** Replace a stored picture key with a freshly signed URL for the response. */
+  private async withPictureUrl<T extends { profilePicture?: string | null }>(
+    user: T,
+  ): Promise<T> {
+    const key = storageKeyFor(user?.profilePicture);
+    if (!key) {
+      return user?.profilePicture
+        ? Object.assign(user, { profilePicture: null })
+        : user;
+    }
+    try {
+      return Object.assign(user, {
+        profilePicture: await this.storageService.getSignedUrl(key),
+      });
+    } catch {
+      // Storage not configured or unreachable: the profile is still usable without a picture.
+      return Object.assign(user, { profilePicture: null });
+    }
   }
 
   @Delete('profile')

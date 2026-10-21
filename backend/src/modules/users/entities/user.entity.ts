@@ -47,7 +47,8 @@ export class User {
   @Column({
     type: 'enum',
     enum: UserRole,
-    default: UserRole.ISSUER,
+    // Least privilege: elevated roles must be set explicitly by the code creating the user.
+    default: UserRole.USER,
   })
   role: UserRole;
 
@@ -68,18 +69,20 @@ export class User {
   @Column({ nullable: true })
   emailVerificationToken: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   emailVerificationExpires: Date;
 
-  @Column({ nullable: true })
-  passwordResetToken: string;
+  // Explicit type: a `string | null` union is emitted as Object, which TypeORM
+  // rejects at startup ("Data type Object is not supported").
+  @Column({ type: 'varchar', nullable: true })
+  passwordResetToken: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   @Index()
-  passwordResetTokenHash: string;
+  passwordResetTokenHash: string | null;
 
-  @Column({ type: 'timestamp', nullable: true })
-  passwordResetExpires: Date;
+  @Column({ type: 'timestamptz', nullable: true })
+  passwordResetExpires: Date | null;
 
   @Column({ default: true })
   isActive: boolean;
@@ -90,16 +93,20 @@ export class User {
   @Column({ default: 0 })
   loginAttempts: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   lastLoginAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
-  lockedUntil: Date;
+  @Column({ type: 'timestamptz', nullable: true })
+  lockedUntil: Date | null;
 
   @Column({ type: 'varchar', nullable: true })
   refreshToken: string | null;
 
-  @Column({ type: 'timestamp', nullable: true })
+  /** Bumped to invalidate all outstanding access tokens (#1184). */
+  @Column({ type: 'int', default: 0 })
+  tokenVersion: number;
+
+  @Column({ type: 'timestamptz', nullable: true })
   refreshTokenExpires: Date | null;
 
   @Column({ default: false })
@@ -111,10 +118,10 @@ export class User {
   @Column({ type: 'simple-array', nullable: true, select: false })
   twoFactorBackupCodes: string[] | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
   // Virtual property for full name
