@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { JSX } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { CheckCircle, AlertTriangle } from "lucide-react";
 import QRScannerModal from "../components/QRScannerModal";
 import { VerificationResult } from "../api";
@@ -19,15 +19,16 @@ type ToastState = {
 
 export default function VerifyCertificate(): JSX.Element {
   const [searchParams] = useSearchParams();
+  const { code } = useParams<{ code?: string }>();
+  // A serial arrives either as `?serial=` (links this app generates) or as
+  // a path segment (QR codes and PDFs printed before #1242).
+  const serialFromUrl =
+    searchParams.get("serial")?.trim() || code?.trim() || "";
   // Seed from the URL so a shared link is verified without a keystroke.
-  const [serial, setSerial] = useState(
-    () => searchParams.get("serial")?.trim() ?? "",
-  );
+  const [serial, setSerial] = useState(() => serialFromUrl);
   // The serial actually committed for verification — set only by an explicit
   // submit, a QR scan or a URL parameter. Keystrokes never reach the API.
-  const [verifiedSerial, setVerifiedSerial] = useState(
-    () => searchParams.get("serial")?.trim() ?? "",
-  );
+  const [verifiedSerial, setVerifiedSerial] = useState(() => serialFromUrl);
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -108,16 +109,16 @@ export default function VerifyCertificate(): JSX.Element {
     [],
   );
 
-  // Keep the input in step with the URL when the query string changes, and
-  // verify the shared serial immediately — a URL parameter is an explicit
-  // request to verify, not a keystroke.
+  // Keep the input in step with the URL when the path or query string
+  // changes, and verify the shared serial immediately — a URL parameter is
+  // an explicit request to verify, not a keystroke.
   useEffect(() => {
-    const serialParam = searchParams.get("serial")?.trim();
+    const serialParam = searchParams.get("serial")?.trim() || code?.trim();
     if (serialParam) {
       setSerial(serialParam);
       setVerifiedSerial(serialParam);
     }
-  }, [searchParams]);
+  }, [searchParams, code]);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {

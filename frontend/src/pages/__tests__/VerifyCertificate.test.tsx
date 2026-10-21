@@ -1,5 +1,6 @@
 import React from "react";
 import { screen, waitFor, fireEvent } from "@testing-library/react";
+import { Route, Routes } from "react-router-dom";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   createTestQueryClient,
@@ -246,5 +247,24 @@ describe("VerifyCertificate committed-serial verification", () => {
     });
 
     await waitFor(() => expect(verifyMock).toHaveBeenCalledWith("CERT-456"));
+  });
+
+  it("verifies a serial supplied as a legacy path segment", async () => {
+    // QR codes and PDFs printed before #1242 used `/verify/<code>`.
+    renderWithProviders(
+      <Routes>
+        <Route path="/verify/:code" element={<VerifyCertificate />} />
+      </Routes>,
+      {
+        queryClient: createTestQueryClient(),
+        routerEntries: ["/verify/CERT-789"],
+      },
+    );
+
+    await waitFor(() => expect(verifyMock).toHaveBeenCalledWith("CERT-789"));
+    const serialInput = screen.getByLabelText(
+      /Certificate Serial Number/i,
+    ) as HTMLInputElement;
+    expect(serialInput.value).toBe("CERT-789");
   });
 });

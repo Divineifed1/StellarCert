@@ -21,11 +21,12 @@ export default function QRCodeModal({
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  const serial = encodeURIComponent(certificateId);
   const verificationUrl =
     baseUrl ||
     (typeof window !== "undefined"
-      ? `${window.location.origin}/verify/${certificateId}`
-      : `https://yourapp.com/verify/${certificateId}`);
+      ? `${window.location.origin}/verify?serial=${serial}`
+      : `https://yourapp.com/verify?serial=${serial}`);
 
   const handleDownload = useCallback(() => {
     setDownloading(true);
