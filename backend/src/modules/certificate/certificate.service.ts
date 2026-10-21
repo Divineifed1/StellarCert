@@ -489,6 +489,7 @@ export class CertificateService {
     updateCertificateDto: UpdateCertificateDto,
   ): Promise<Certificate> {
     const certificate = await this.findOne(id);
+    this.assertCertificateEditable(certificate);
 
     Object.assign(certificate, updateCertificateDto);
 
@@ -1230,6 +1231,25 @@ export class CertificateService {
     }
   }
 
+  /**
+   * Assert that a certificate's content may still be edited (#1240).
+   *
+   * A revoked certificate is a closed record: verifiers, the audit trail and
+   * any on-chain anchor all refer to what it said when it was revoked. A
+   * frozen certificate is suspended, so its content is held steady too; the
+   * issuer must unfreeze it before changing anything. Only an active
+   * certificate may be edited.
+   *
+   * @throws ConflictException when the certificate is not active
+   */
+  private assertCertificateEditable(certificate: Certificate): void {
+    if (certificate.status !== CertificateStatus.ACTIVE) {
+      throw new ConflictException(
+        `Certificate must be active to be edited. Current status: ${certificate.status}`,
+      );
+    }
+  }
+
   async updateWithUser(
     id: string,
     updateCertificateDto: UpdateCertificateDto,
@@ -1238,6 +1258,7 @@ export class CertificateService {
   ): Promise<Certificate> {
     const certificate = await this.findOne(id);
     this.assertCertificateOwnership(certificate, userId, userRole);
+    this.assertCertificateEditable(certificate);
     Object.assign(certificate, updateCertificateDto);
     return this.certificateRepository.save(certificate);
   }
