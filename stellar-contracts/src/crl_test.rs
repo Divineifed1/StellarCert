@@ -67,9 +67,7 @@ fn expected_node_hash(env: &Env, left: &BytesN<32>, right: &BytesN<32>) -> Bytes
     data[0] = 1;
     data[1..33].copy_from_slice(&left.to_array());
     data[33..].copy_from_slice(&right.to_array());
-    env.crypto()
-        .sha256(&Bytes::from_slice(env, &data))
-        .into()
+    env.crypto().sha256(&Bytes::from_slice(env, &data)).into()
 }
 
 fn hash_to_string(env: &Env, hash: &BytesN<32>) -> String {
@@ -333,11 +331,17 @@ fn test_get_revoked_certificates_pagination() {
     // listings.
     let page1 = client.get_revoked_certificates(&1, &3);
     assert_eq!(page1.len(), 3);
-    assert_eq!(page1.get(0).unwrap().certificate_id, String::from_str(&env, "CERT-0"));
+    assert_eq!(
+        page1.get(0).unwrap().certificate_id,
+        String::from_str(&env, "CERT-0")
+    );
 
     let page2 = client.get_revoked_certificates(&2, &3);
     assert_eq!(page2.len(), 3);
-    assert_eq!(page2.get(0).unwrap().certificate_id, String::from_str(&env, "CERT-3"));
+    assert_eq!(
+        page2.get(0).unwrap().certificate_id,
+        String::from_str(&env, "CERT-3")
+    );
 
     let page3 = client.get_revoked_certificates(&3, &3);
     assert_eq!(page3.len(), 1); // only 1 left
@@ -348,7 +352,10 @@ fn test_get_revoked_certificates_pagination() {
     // Page 0 is normalized to the first page (saturating), not skipped.
     let page0 = client.get_revoked_certificates(&0, &3);
     assert_eq!(page0.len(), 3);
-    assert_eq!(page0.get(0).unwrap().certificate_id, String::from_str(&env, "CERT-0"));
+    assert_eq!(
+        page0.get(0).unwrap().certificate_id,
+        String::from_str(&env, "CERT-0")
+    );
 }
 
 #[test]
@@ -516,7 +523,10 @@ fn test_revoke_certificate_emits_revocation_added_event() {
         &env,
         &[
             ("certificate_id", cert_id.clone().into_val(&env)),
-            ("reason", (RevocationReason::KeyCompromise as u32).into_val(&env)),
+            (
+                "reason",
+                (RevocationReason::KeyCompromise as u32).into_val(&env),
+            ),
             ("revoked_by", issuer.clone().into_val(&env)),
             ("revocation_date", env.ledger().timestamp().into_val(&env)),
             ("revoked_count", crl.revoked_count.into_val(&env)),
@@ -575,12 +585,18 @@ fn test_each_revocation_emits_its_own_event_with_the_current_crl_head() {
         &env,
         &[
             ("certificate_id", second.clone().into_val(&env)),
-            ("reason", (RevocationReason::CACompromise as u32).into_val(&env)),
+            (
+                "reason",
+                (RevocationReason::CACompromise as u32).into_val(&env),
+            ),
             ("revoked_by", issuer.clone().into_val(&env)),
             ("revocation_date", env.ledger().timestamp().into_val(&env)),
             ("revoked_count", after_second.revoked_count.into_val(&env)),
             ("crl_number", after_second.crl_number.into_val(&env)),
-            ("merkle_root", after_second.merkle_root.clone().into_val(&env)),
+            (
+                "merkle_root",
+                after_second.merkle_root.clone().into_val(&env),
+            ),
             ("this_update", after_second.this_update.into_val(&env)),
             ("next_update", after_second.next_update.into_val(&env)),
         ],
@@ -616,12 +632,8 @@ fn test_rejected_revocation_emits_no_event() {
     let cert_id = String::from_str(&env, "CERT-001");
     client.revoke_certificate(&issuer, &cert_id, &RevocationReason::KeyCompromise, &None);
 
-    let duplicate = client.try_revoke_certificate(
-        &issuer,
-        &cert_id,
-        &RevocationReason::KeyCompromise,
-        &None,
-    );
+    let duplicate =
+        client.try_revoke_certificate(&issuer, &cert_id, &RevocationReason::KeyCompromise, &None);
     assert!(duplicate.is_err());
     assert!(env.events().all().events().is_empty());
 

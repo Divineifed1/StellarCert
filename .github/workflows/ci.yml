@@ -264,10 +264,18 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings -A deprecated
       - name: Install wasm target
         run: rustup target add wasm32v1-none
+      # The official prebuilt binary: compiling it with `cargo install` takes
+      # many minutes, and with current Rust its pinned ethnum 1.5.2 fails to
+      # build (E0512).
       - name: Install Stellar CLI
-        run: cargo install stellar-cli@25.2.0
-      # deploy-contracts.sh ships target/wasm32v1-none/release.
+        run: |
+          curl -fsSL https://github.com/stellar/stellar-cli/releases/download/v25.2.0/stellar-cli-25.2.0-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz -C "$HOME/.cargo/bin" stellar
+          stellar --version
+      # One WASM per contract (they share exported function names, so each is
+      # built with its own feature): target/contracts/<contract>.wasm, which
+      # is what deploy-contracts.sh ships.
       - name: Build contracts
-        run: stellar contract build
+        run: ./build-contracts.sh
       - name: Test contracts
         run: cargo test

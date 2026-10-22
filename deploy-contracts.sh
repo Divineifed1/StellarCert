@@ -29,12 +29,14 @@ echo "RPC URL: $RPC_URL"
 # Build the contracts
 echo "Building contracts..."
 cd stellar-contracts
-stellar contract build
+# One WASM per contract (they share exported names, so they cannot share one
+# module): target/contracts/<contract>.wasm
+./build-contracts.sh certificate multisig crl
 
 # Deploy certificate contract
 echo "Deploying certificate contract..."
 CERT_WASM_HASH=$(soroban contract deploy \
-    --wasm target/wasm32v1-none/release/certificate_revocation.wasm \
+    --wasm target/contracts/certificate.wasm \
     --source "$ADMIN_SECRET" \
     --rpc-url "$RPC_URL" \
     --network-passphrase "$(soroban config network pass $NETWORK)" \
@@ -100,7 +102,7 @@ echo "Certificate contract initialized successfully!"
 # Deploy multisig contract (if needed)
 echo "Deploying multisig contract..."
 MULTISIG_WASM_HASH=$(soroban contract deploy \
-    --wasm target/wasm32v1-none/release/certificate_revocation.wasm \
+    --wasm target/contracts/multisig.wasm \
     --source "$ADMIN_SECRET" \
     --rpc-url "$RPC_URL" \
     --network-passphrase "$(soroban config network pass $NETWORK)" \
@@ -118,7 +120,7 @@ echo "Multisig contract deployed with ID: $MULTISIG_CONTRACT_ID"
 # Deploy CRL contract (if needed)
 echo "Deploying CRL contract..."
 CRL_WASM_HASH=$(soroban contract deploy \
-    --wasm target/wasm32v1-none/release/certificate_revocation.wasm \
+    --wasm target/contracts/crl.wasm \
     --source "$ADMIN_SECRET" \
     --rpc-url "$RPC_URL" \
     --network-passphrase "$(soroban config network pass $NETWORK)" \

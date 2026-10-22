@@ -194,9 +194,14 @@ bash
 cd ../stellar-contracts
 rustup target add wasm32v1-none
 cargo install stellar-cli@25.2.0
-stellar contract build
+./build-contracts.sh
 
-# Contract artifact: target/wasm32v1-none/release/certificate_revocation.wasm
+# One WASM per contract, since they share exported function names:
+
+# target/contracts/{certificate,multisig,crl,admin-multisig}.wasm
+
+# A single contract: stellar contract build --no-default-features --features crl
+
 🏃‍♂️ Running the Application
 Development Mode
 Option A: Using Docker Compose (Recommended)
@@ -250,13 +255,15 @@ cargo test
 Environment Variables
 
 **Required to boot:**
+
 - `JWT_SECRET` — any string works for local development (e.g. `dev-secret`)
 - `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` — defaults in `.env.example` match `docker compose`
 
 **Optional (the app will start with warnings):**
+
 - `STELLAR_ISSUER_SECRET_KEY` / `STELLAR_ISSUER_PUBLIC_KEY` — only needed for certificate operations
 - `SENTRY_DSN` / `ENABLE_SENTRY` — error reporting
-- `STORAGE_*` — file storage (S3/MinIO)  
+- `STORAGE_*` — file storage (S3/MinIO)
 - `AUDIT_RETENTION_DAYS`, `DUPLICATE_DETECTION_*` — feature toggles with safe defaults
 
 Backend (.env):
@@ -299,11 +306,13 @@ app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 Every route is therefore served under `/api/v1/...`. A plain `/api/...` path returns **404** — this has caused issues in docker-compose and healthcheck configs in the past.
 
 Base URL (local dev):
+
 ```
 http://localhost:3000/api/v1
 ```
 
 Quick smoke-test (health check):
+
 ```bash
 curl http://localhost:3000/api/v1/health
 ```
@@ -311,6 +320,7 @@ curl http://localhost:3000/api/v1/health
 The Swagger UI (available at `http://localhost:3000/api/docs` in development) reflects the versioned paths — all routes shown there include the `/v1/` segment.
 
 **Important for configuration:** make sure environment variables that point at the API use the versioned base URL:
+
 ```env
 # ✅ Correct
 VITE_API_URL=http://localhost:3000/api/v1

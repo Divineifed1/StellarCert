@@ -1,5 +1,35 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, IntoVal, String, Symbol, Val, Vec};
+
+// A WASM module can export a function name only once, and these contracts share
+// names (initialize, revoke_certificate, approve_request, ...). Build each
+// contract on its own, e.g.
+//   stellar contract build --no-default-features --features crl
+#[cfg(all(
+    target_family = "wasm",
+    any(
+        all(feature = "certificate", feature = "multisig"),
+        all(feature = "certificate", feature = "crl"),
+        all(feature = "certificate", feature = "admin-multisig"),
+        all(feature = "multisig", feature = "crl"),
+        all(feature = "multisig", feature = "admin-multisig"),
+        all(feature = "crl", feature = "admin-multisig"),
+    )
+))]
+compile_error!("select exactly one contract feature for a WASM build: certificate, multisig, crl or admin-multisig");
+
+#[cfg(all(
+    target_family = "wasm",
+    not(any(
+        feature = "certificate",
+        feature = "multisig",
+        feature = "crl",
+        feature = "admin-multisig"
+    ))
+))]
+compile_error!(
+    "no contract selected: enable one of the features certificate, multisig, crl or admin-multisig"
+);
+use soroban_sdk::{contract, Address, BytesN, Env, IntoVal, String, Symbol, Val, Vec};
 
 mod types;
 // Explicit re-exports replace `pub use types::*` to avoid ambiguous_glob_reexports
@@ -69,7 +99,11 @@ mod transfer_security_test;
 #[contract]
 pub struct CertificateContract;
 
-#[contractimpl]
+// Exported only when this contract is the one being built; see Cargo.toml.
+#[cfg_attr(
+    any(not(target_family = "wasm"), feature = "certificate"),
+    soroban_sdk::contractimpl
+)]
 impl CertificateContract {
     fn set_persistent<K, V>(env: &Env, key: &K, value: &V)
     where
@@ -1499,7 +1533,6 @@ impl CertificateContract {
         Self::set_persistent(&env, &DataKey::ContractVersion, &ver);
 
         #[allow(deprecated)]
-
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
@@ -1796,5 +1829,3 @@ impl CertificateContract {
         }
     }
 }
-
-

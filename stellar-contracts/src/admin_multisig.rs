@@ -1,6 +1,5 @@
 use soroban_sdk::{
-    contract, contractevent, contractimpl, contracttype, Address, BytesN, Env, IntoVal, String,
-    Val, Vec,
+    contract, contractevent, contracttype, Address, BytesN, Env, IntoVal, String, Val, Vec,
 };
 
 #[contracttype]
@@ -96,7 +95,11 @@ pub struct ProposalExecutedEvent {
 #[contract]
 pub struct AdminMultisigContract;
 
-#[contractimpl]
+// Exported only when this contract is the one being built; see Cargo.toml.
+#[cfg_attr(
+    any(not(target_family = "wasm"), feature = "admin-multisig"),
+    soroban_sdk::contractimpl
+)]
 impl AdminMultisigContract {
     fn set_instance<K, V>(env: &Env, key: &K, value: &V)
     where

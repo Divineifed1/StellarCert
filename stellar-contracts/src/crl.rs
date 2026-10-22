@@ -1,6 +1,5 @@
 use soroban_sdk::{
-    contract, contractevent, contractimpl, contracttype, Address, Bytes, BytesN, Env, IntoVal,
-    String, Val, Vec,
+    contract, contractevent, contracttype, Address, Bytes, BytesN, Env, IntoVal, String, Val, Vec,
 };
 
 const DEFAULT_UPDATE_WINDOW_SECONDS: u64 = 7 * 24 * 60 * 60;
@@ -107,7 +106,11 @@ enum DataKey {
 #[contract]
 pub struct CRLContract;
 
-#[contractimpl]
+// Exported only when this contract is the one being built; see Cargo.toml.
+#[cfg_attr(
+    any(not(target_family = "wasm"), feature = "crl"),
+    soroban_sdk::contractimpl
+)]
 impl CRLContract {
     fn set_persistent<K, V>(env: &Env, key: &K, value: &V)
     where
@@ -511,7 +514,6 @@ impl CRLContract {
         String::from_str(env, unsafe { core::str::from_utf8_unchecked(&out) })
     }
 }
-
 
 #[cfg(test)]
 mod admin_storage_tests {

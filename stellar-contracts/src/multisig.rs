@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, Address, Env, IntoVal, String, Symbol, Val, Vec};
+use soroban_sdk::{contract, Address, Env, IntoVal, String, Symbol, Val, Vec};
 
 use crate::{
     DataKey, MultisigConfig, OptionalRequestStatus, PaginatedResult, Pagination, PendingRequest,
@@ -8,7 +8,11 @@ use crate::{
 #[contract]
 pub struct MultisigCertificateContract;
 
-#[contractimpl]
+// Exported only when this contract is the one being built; see Cargo.toml.
+#[cfg_attr(
+    any(not(target_family = "wasm"), feature = "multisig"),
+    soroban_sdk::contractimpl
+)]
 impl MultisigCertificateContract {
     fn set_instance<K, V>(env: &Env, key: &K, value: &V)
     where
