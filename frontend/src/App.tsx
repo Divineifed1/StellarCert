@@ -14,6 +14,7 @@ import { WALLET_ALLOWED_ROLES } from "./constants/routeAccess";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const IssueCertificate = lazy(() => import("./pages/IssueCertificate"));
 const VerifyCertificate = lazy(() => import("./pages/VerifyCertificate"));
+const CertificatePublic = lazy(() => import("./pages/CertificatePublic"));
 const CertificateWallet = lazy(() => import("./pages/CertificateWallet"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
@@ -70,15 +71,18 @@ function App() {
                     #1242 used `/verify/<code>`; keep those links working
                     rather than sending them to the 404 route.
                   */}
-                  <Route
-                    path="/verify/:code"
-                    element={<VerifyCertificate />}
-                  />
+                  <Route path="/verify/:code" element={<VerifyCertificate />} />
+                  {/* Public share page (#1178): anonymous, no guard. */}
+                  <Route path="/c/:publicId" element={<CertificatePublic />} />
                   <Route path="/verify-email" element={<VerifyEmail />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
 
                   <Route
-                    element={<ProtectedRoute allowedRoles={[...WALLET_ALLOWED_ROLES]} />}
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={[...WALLET_ALLOWED_ROLES]}
+                      />
+                    }
                   >
                     <Route path="/wallet" element={<CertificateWallet />} />
                   </Route>
@@ -100,9 +104,7 @@ function App() {
 
                   {/* Admin-only routes */}
                   <Route
-                    element={
-                      <ProtectedRoute allowedRoles={[UserRole.ADMIN]} />
-                    }
+                    element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]} />}
                   >
                     <Route path="/admin/users" element={<AdminUsers />} />
                     <Route path="/admin/audit" element={<AdminAuditLogs />} />
